@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://unpkg.com/tabulator-tables@5.2.3/dist/css/tabulator.min.css" rel="stylesheet">
+ 
+  </head>
+  <body>
+    <div id="data-table"></div>
+    <div id="alerts"></div>
+
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.2.3/dist/js/tabulator.min.js"></script>
+    <script>
+
+      const elements = {}
+      document.addEventListener("DOMContentLoaded", pageLoad)
+    
+         function pageLoad() {
+        elements.alerts = document.getElementById("alerts")
+        google.script.run
+        .withSuccessHandler(jsData => {
+          var table = new Tabulator("#data-table", {
+          height:205, 
+          data:jsData, //assign data to table 
+          layout:"fitColumns", //fit columns to width of table (optional)
+          pagination: true,
+          paginationSize: 10,
+          columns:[ //Define Table Columns
+            {title:"id Op", field:"id Op", width:150},
+            {title:"Tasa", field:"Tasa", width:100, editor:"input"},
+            {title:"Email", field:"Email", hozAlign:"center", editor:"input"},
+          ],
+        })
+
+          //trigger an alert message when the row is clicked
+          table.on("cellEdited", function(cell){ 
+              const id = cell._cell.row.data["id Op"]
+              const email = cell._cell.row.data["Email"]
+              const newValue = cell._cell.value
+              const modified_field = cell._cell.column.field
+
+              if (modified_field === "Tasa" || modified_field === "Email") {
+                elements.alerts.textContent = "Saving changes.."
+                google.script.run
+                .withSuccessHandler((response) => {
+                  console.log(response)
+                  elements.alerts.textContent = modified_field + " succesfully changed!"
+                  clearAlerts(elements.alerts)
+                })
+                .withFailureHandler(er => {
+                  console.log(er)
+                  elements.alerts.textContent = "Error saving new " + modified_field
+                  clearAlerts(elements.alerts)
+                })
+                .editField({id, modified_field, newValue})
+              }
+              if (modified_field === "Tasa") {
+                 google.script.run.withSuccessHandler(ret => 
+                    {
+                    elements.alerts.textContent = "Email succesfully sent!"
+                    clearAlerts(elements.alerts)
+                    })
+                    .withFailureHandler(er =>{
+                    elements.alerts.textContent = "There was en error while sending notification email to " + email
+                    clearAlerts(elements.alerts) 
+                    })
+                    .sendEmail({id, email, newValue})
+             } 
+          })
+        })
+        .withFailureHandler(er => {
+
+        })
+        .getData()
+      }
+
+      function clearAlerts(el) {
+        setTimeout(() => {
+          el.textContent = ""
+        }, 3000)
+      }
+    </script>
+  </body>
+</html>
